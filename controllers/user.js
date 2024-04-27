@@ -100,7 +100,8 @@ exports.deleteUser = async (req, res) => {
 		}
 
 		// TODO: remove the cookie and the user's posts
-		res.json({ success: true });
+		await Post.deleteMany({ authorId: req.user.id });
+		res.cookie("jwt", "", { maxAge: 1 }).json({ success: true });
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ error: "Internal server error." });
