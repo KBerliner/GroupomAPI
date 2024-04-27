@@ -74,6 +74,10 @@ exports.login = async (req, res) => {
 	}
 };
 
+exports.logout = async (req, res) => {
+	res.cookie("jwt", "", { maxAge: 1 }).json({ success: true });
+};
+
 exports.getUsers = async (req, res) => {
 	try {
 		const users = await User.find();

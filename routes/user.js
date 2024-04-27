@@ -12,6 +12,11 @@ const userCtrl = require("../controllers/user");
 
 router.post("/signup", userCtrl.signup);
 router.post("/login", userCtrl.login);
+router.post(
+	"/logout",
+	passport.authenticate("jwt", { session: false }),
+	userCtrl.logout
+);
 router.get(
 	"/",
 	passport.authenticate("jwt", { session: false }),
