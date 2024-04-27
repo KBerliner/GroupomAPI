@@ -59,9 +59,13 @@ exports.login = async (req, res) => {
 		await user.save();
 
 		// Generate JWT token
-		const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-			expiresIn: "1m",
-		});
+		const token = jwt.sign(
+			{ id: user._id, username: user.username },
+			process.env.JWT_SECRET,
+			{
+				expiresIn: "1m",
+			}
+		);
 
 		// Remove password from the response
 		user.password = undefined;
