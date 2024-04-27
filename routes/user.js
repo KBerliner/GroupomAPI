@@ -11,11 +11,7 @@ const userCtrl = require("../controllers/user");
 // Routing Endpoints
 
 router.post("/signup", userCtrl.signup);
-router.post(
-	"/login",
-	passport.authenticate("jwt", { session: false }),
-	userCtrl.login
-);
+router.post("/login", userCtrl.login);
 router.get(
 	"/",
 	passport.authenticate("jwt", { session: false }),
