@@ -10,6 +10,26 @@ const postCtrl = require("../controllers/post");
 
 // Routing Endpoints
 
+router.post(
+	"/",
+	passport.authenticate("jwt", { session: false }),
+	postCtrl.createPost
+);
+
+router.put(
+	"/update/:id",
+	passport.authenticate("jwt", { session: false }),
+	postCtrl.editPost
+);
+
+router.delete(
+	"/delete/:id",
+	passport.authenticate("jwt", { session: false }),
+	postCtrl.deletePost
+);
+
+router.get("/", postCtrl.getAllPosts);
+
 // Exporting Routes
 
 module.exports = router;
