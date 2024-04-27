@@ -106,3 +106,13 @@ exports.deleteUser = async (req, res) => {
 		res.status(500).json({ error: "Internal server error." });
 	}
 };
+
+exports.getPosts = async (req, res) => {
+	try {
+		const posts = await Post.find({ _id: req.params.id });
+		res.json(posts);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error." });
+	}
+};

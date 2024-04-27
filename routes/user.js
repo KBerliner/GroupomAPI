@@ -28,6 +28,8 @@ router.delete(
 	userCtrl.deleteUser
 );
 
+router.get("/posts/:id", userCtrl.getPosts);
+
 // Exporting Routes
 
 module.exports = router;
