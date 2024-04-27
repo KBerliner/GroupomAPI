@@ -17,6 +17,11 @@ router.get(
 	passport.authenticate("jwt", { session: false }),
 	userCtrl.getUsers
 );
+router.delete(
+	"/",
+	passport.authenticate("jwt", { session: false }),
+	userCtrl.deleteUser
+);
 
 // Exporting Routes
 
