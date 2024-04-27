@@ -1,0 +1,28 @@
+// Installing Dependencies
+
+const express = require("express");
+const router = express.Router();
+const passport = require("passport");
+require("../middleware/jwt");
+require("dotenv").config();
+
+const User = require("../models/user");
+const userCtrl = require("../controllers/user");
+
+// Routing Endpoints
+
+router.post("/signup", userCtrl.signup);
+router.post(
+	"/login",
+	passport.authenticate("jwt", { session: false }),
+	userCtrl.login
+);
+router.get(
+	"/",
+	passport.authenticate("jwt", { session: false }),
+	userCtrl.getUsers
+);
+
+// Exporting Routes
+
+module.exports = router;
