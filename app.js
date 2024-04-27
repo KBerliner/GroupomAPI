@@ -10,6 +10,7 @@ const db = require("./utils/db");
 const passport = require("passport");
 const cookieParser = require("cookie-parser");
 const userRoutes = require("./routes/user");
+const postRoutes = require("./routes/post");
 
 // Setting up Express
 
@@ -34,6 +35,7 @@ app.use(cors());
 // Request Routing
 
 app.use("/api/users", userRoutes);
+app.use("/api/posts", postRoutes);
 
 // Export the app
 
