@@ -27,7 +27,7 @@ userSchema.pre("save", async function (next) {
 
 // Adding a validator method
 
-userSchema.methods.isCorrectPassword = async (password) => {
+userSchema.methods.isCorrectPassword = async function (password) {
 	return bcrypt.compare(password, this.password);
 };
 
