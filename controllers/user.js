@@ -3,6 +3,8 @@ const User = require("../models/user");
 const Post = require("../models/post");
 const jwt = require("jsonwebtoken");
 
+const refreshMiddleware = require("../middleware/refresh").refreshExtractor;
+
 exports.signup = async (req, res) => {
 	const { username, email, password } = req.body;
 
@@ -67,11 +69,17 @@ exports.login = async (req, res) => {
 			}
 		);
 
+		// Generate Refresh token
+		const refresh = jwt.sign({ id: user._id }, process.env.REFRESH_JWT_SECRET, {
+			expiresIn: "7d",
+		});
+
 		// Remove password from the response
 		user.password = undefined;
 
 		// Adding JWT to a Cookie
-		res.cookie("jwt", token, { httpOnly: true }).json({ success: true });
+		res.cookie("jwt", token, { httpOnly: true });
+		res.cookie("refresh", refresh, { httpOnly: true }).json({ success: true });
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ error: "Internal server error." });
@@ -79,6 +87,7 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
+	res.cookie("refresh", "", { maxAge: 1 });
 	res.cookie("jwt", "", { maxAge: 1 }).json({ success: true });
 };
 
@@ -112,6 +121,28 @@ exports.getPosts = async (req, res) => {
 	try {
 		const posts = await Post.find({ _id: req.params.id });
 		res.json(posts);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error." });
+	}
+};
+
+exports.refresh = async (req, res) => {
+	try {
+		const user = await User.findById(req.user.id);
+		if (!user) {
+			return res.status(404).json({ error: "User not found." });
+		}
+
+		const token = jwt.sign(
+			{ id: user._id, username: user.username },
+			process.env.JWT_SECRET,
+			{
+				expiresIn: "1m",
+			}
+		);
+
+		res.cookie("jwt", token, { httpOnly: true }).json({ success: true });
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ error: "Internal server error." });
