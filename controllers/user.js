@@ -1,5 +1,6 @@
 const express = require("express");
 const User = require("../models/user");
+const jwt = require("jsonwebtoken");
 
 exports.signup = async (req, res) => {
 	const { username, email, password } = req.body;
@@ -50,6 +51,11 @@ exports.login = async (req, res) => {
 		if (!isPasswordCorrect) {
 			return res.status(401).json({ error: "Incorrect password." });
 		}
+
+		// Changing the last login time of the user
+
+		user.lastLogin = Date.now();
+		await user.save();
 
 		// Generate JWT token
 		const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
