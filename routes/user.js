@@ -6,7 +6,6 @@ const passport = require("passport");
 require("../middleware/jwt");
 require("dotenv").config();
 
-const User = require("../models/user");
 const userCtrl = require("../controllers/user");
 
 // Routing Endpoints
