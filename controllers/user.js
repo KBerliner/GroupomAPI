@@ -1,7 +1,12 @@
 const express = require("express");
 const User = require("../models/user");
 const Post = require("../models/post");
+const RevokedToken = require("../models/revokedToken");
 const jwt = require("jsonwebtoken");
+const addRevokedToken = require("../utils/addRevokedToken").addRevokedToken;
+const deleteExpiredRevokedTokens =
+	require("../utils/deleteExpiredRevokedTokens").deleteExpiredRevokedTokens;
+require("cookie-parser");
 
 const refreshMiddleware = require("../middleware/refresh").refreshExtractor;
 
@@ -65,17 +70,20 @@ exports.login = async (req, res) => {
 			{ id: user._id, username: user.username },
 			process.env.JWT_SECRET,
 			{
-				expiresIn: "1m",
+				expiresIn: "10s",
 			}
 		);
 
 		// Generate Refresh token
 		const refresh = jwt.sign({ id: user._id }, process.env.REFRESH_JWT_SECRET, {
-			expiresIn: "7d",
+			expiresIn: "15s",
 		});
 
 		// Remove password from the response
 		user.password = undefined;
+
+		// Delete all expired refresh tokens from the Database
+		deleteExpiredRevokedTokens();
 
 		// Adding JWT to a Cookie
 		res.cookie("jwt", token, { httpOnly: true });
@@ -87,8 +95,14 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
-	res.cookie("refresh", "", { maxAge: 1 });
-	res.cookie("jwt", "", { maxAge: 1 }).json({ success: true });
+	try {
+		addRevokedToken(req);
+		res.clearCookie("refresh");
+		res.clearCookie("jwt").json({ success: true });
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error." });
+	}
 };
 
 exports.getUsers = async (req, res) => {
@@ -129,6 +143,14 @@ exports.getPosts = async (req, res) => {
 
 exports.refresh = async (req, res) => {
 	try {
+		const refreshToken = req.cookies["refresh"];
+
+		// Checking if the refresh token is revoked
+		const isRevoked = await RevokedToken.findOne({ token: refreshToken });
+		if (isRevoked) {
+			return res.status(401).json({ error: "Refresh token Revoked!" });
+		}
+
 		const user = await User.findById(req.user.id);
 		if (!user) {
 			return res.status(404).json({ error: "User not found." });
