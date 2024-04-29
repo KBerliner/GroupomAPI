@@ -3,6 +3,7 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
+const multer = require("../middleware/multer-config");
 require("../middleware/jwt");
 require("dotenv").config();
 
@@ -13,12 +14,14 @@ const postCtrl = require("../controllers/post");
 router.post(
 	"/",
 	passport.authenticate("jwt", { session: false }),
+	multer,
 	postCtrl.createPost
 );
 
 router.put(
 	"/update/:id",
 	passport.authenticate("jwt", { session: false }),
+	multer,
 	postCtrl.editPost
 );
 

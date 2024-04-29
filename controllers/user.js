@@ -10,8 +10,21 @@ require("cookie-parser");
 
 const refreshMiddleware = require("../middleware/refresh").refreshExtractor;
 
+const AWS = require("../utils/aws");
+
+// Initializing S3 instance
+const s3 = new AWS.S3();
+
 exports.signup = async (req, res) => {
-	const { username, email, password } = req.body;
+	console.log(req.body.body, req.file);
+	// Setting Variables
+	const body = JSON.parse(req.body.body);
+	const { username, email, password } = body;
+	const MIME_TYPES = {
+		"image/jpg": "jpg",
+		"image/jpeg": "jpg",
+		"image/png": "png",
+	};
 
 	// Validate request body
 	if (!username || !email || !password) {
@@ -19,22 +32,67 @@ exports.signup = async (req, res) => {
 	}
 
 	// Create a new user instance
-	const user = new User(req.body);
+	let user = undefined;
 
-	try {
-		// Save the user to the database
-		await user.save();
-		// Remove the password from the response
-		user.password = undefined;
-		res.status(201).json({ message: "User created successfully!", user });
-	} catch (error) {
-		if (error.code === 11000) {
-			// Duplicate email error
-			res.status(400).json({ error: "Email is already taken." });
-		} else {
-			// Other errors
-			console.error(error);
-			res.status(500).json({ error: "Internal server error." });
+	// Using request file
+	if (req.file) {
+		const uploadParams = {
+			Bucket: "groupomaniapfp",
+			Key: `${Date.now().toString()}.${MIME_TYPES[req.file.mimetype]}`,
+			Body: req.file.buffer,
+			ContentType: `image/${MIME_TYPES[req.file.mimetype]}`,
+			ContentDisposition: "inline",
+		};
+
+		s3.upload(uploadParams, async (err, data) => {
+			if (err) {
+				console.error("Error uploading file to S3: ", err);
+				res.status(500).json({
+					error: "Failed to upload profile picture to S3",
+					message: err,
+				});
+			} else {
+				console.log("Successfully uploaded profile picture to S3: ", data);
+
+				// Adding the URL to the user Object
+				user = new User({ ...body, profilePictureUrl: data.Location });
+				try {
+					console.log("USER: ", user);
+					// Save the user to the database
+					await user.save();
+					// Remove the password from the response
+					user.password = undefined;
+					res.status(201).json({ message: "User created successfully!", user });
+				} catch (error) {
+					if (error.code === 11000) {
+						// Duplicate email error
+						res.status(400).json({ error: "Email is already taken." });
+					} else {
+						// Other errors
+						console.error(error);
+						res.status(500).json({ error: "Internal server error." });
+					}
+				}
+			}
+		});
+	} else {
+		user = new User(body);
+		try {
+			console.log("USER: ", user);
+			// Save the user to the database
+			await user.save();
+			// Remove the password from the response
+			user.password = undefined;
+			res.status(201).json({ message: "User created successfully!", user });
+		} catch (error) {
+			if (error.code === 11000) {
+				// Duplicate email error
+				res.status(400).json({ error: "Email is already taken." });
+			} else {
+				// Other errors
+				console.error(error);
+				res.status(500).json({ error: "Internal server error." });
+			}
 		}
 	}
 };
@@ -70,13 +128,13 @@ exports.login = async (req, res) => {
 			{ id: user._id, username: user.username },
 			process.env.JWT_SECRET,
 			{
-				expiresIn: "10s",
+				expiresIn: "15m",
 			}
 		);
 
 		// Generate Refresh token
 		const refresh = jwt.sign({ id: user._id }, process.env.REFRESH_JWT_SECRET, {
-			expiresIn: "15s",
+			expiresIn: "7d",
 		});
 
 		// Remove password from the response

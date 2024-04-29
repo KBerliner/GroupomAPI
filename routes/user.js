@@ -3,6 +3,7 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
+const multer = require("../middleware/multer-config");
 require("../middleware/jwt");
 require("../middleware/refresh");
 require("dotenv").config();
@@ -11,7 +12,7 @@ const userCtrl = require("../controllers/user");
 
 // Routing Endpoints
 
-router.post("/signup", userCtrl.signup);
+router.post("/signup", multer, userCtrl.signup);
 router.post("/login", userCtrl.login);
 router.post(
 	"/logout",

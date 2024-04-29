@@ -1,18 +1,67 @@
 const express = require("express");
 const Post = require("../models/post");
+const AWS = require("../utils/aws");
+
+// Initializing S3 instance
+const s3 = new AWS.S3();
 
 exports.createPost = async (req, res) => {
-	try {
-		const post = new Post({
-			author: req.user.username,
-			authorId: req.user.id,
-			...req.body,
+	// Setting Variables
+	const MIME_TYPES = {
+		"image/png": "png",
+		"image/jpeg": "jpeg",
+		"image/jpg": "jpg",
+	};
+
+	// Checking for file in request
+	if (req.file) {
+		const uploadParams = {
+			Bucket: "groupomaniacontent",
+			Key: `${Date.now().toString()}.${MIME_TYPES[req.file.mimetype]}`,
+			Body: req.file.buffer,
+			ContentType: `image/${MIME_TYPES[req.file.mimetype]}`,
+			ContentDisposition: "inline",
+		};
+
+		s3.upload(uploadParams, async (err, data) => {
+			if (err) {
+				console.error("Error uploading file to S3: ", err);
+				res.status(500).json({
+					error: "Failed to upload content to S3",
+					message: err,
+				});
+			} else {
+				console.log("Successfully uploaded content to S3: ", data);
+
+				// Adding the content URL to the post object
+				try {
+					const post = new Post({
+						author: req.user.username,
+						authorId: req.user.id,
+						imageUrl: data.Location,
+						...req.body,
+					});
+					await post.save();
+					res.status(201).json({ success: true });
+				} catch (error) {
+					console.error(error);
+					res.status(500).json({ error: "Internal server error." });
+				}
+			}
 		});
-		await post.save();
-		res.status(201).json({ success: true });
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+	} else {
+		try {
+			const post = new Post({
+				author: req.user.username,
+				authorId: req.user.id,
+				...req.body,
+			});
+			await post.save();
+			res.status(201).json({ success: true });
+		} catch (error) {
+			console.error(error);
+			res.status(500).json({ error: "Internal server error." });
+		}
 	}
 };
 
