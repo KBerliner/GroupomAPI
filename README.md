@@ -71,11 +71,27 @@ fetch(`${url}/api/users/login`, {
 });
 ```
 
-- Delete Account Endpoint
+- Logout Endpoint \*
+
+```javascript
+fetch(`${url}/api/users/logout`, {
+	method: "POST",
+});
+```
+
+- Delete Account Endpoint \*
 
 ```javascript
 fetch(`${url}/api/users/delete/`, {
 	method: "DELETE",
+});
+```
+
+- Token Refresh Endpoint \*
+
+```javascript
+fetch(`${url}/api/users/refresh`, {
+	method: "POST",
 });
 ```
 
@@ -85,7 +101,7 @@ fetch(`${url}/api/users/delete/`, {
 fetch(`${url}/api/users/posts/:userId`);
 ```
 
-- Create Post Endpoint
+- Create Post Endpoint \*
 
 ```javascript
 fetch(`${url}/api/posts/`, {
@@ -103,7 +119,7 @@ fetch(`${url}/api/posts/`, {
 });
 ```
 
-- Edit Post Endpoint
+- Edit Post Endpoint \*
 
 ```javascript
 fetch(`${url}/api/posts/update/:id`, {
@@ -116,7 +132,7 @@ fetch(`${url}/api/posts/update/:id`, {
 });
 ```
 
-- Delete Post Endpoint
+- Delete Post Endpoint \*
 
 ```javascript
 fetch(`${url}/api/posts/delete/:id`, {
@@ -129,3 +145,5 @@ fetch(`${url}/api/posts/delete/:id`, {
 ```javascript
 fetch(`${url}/api/posts/`);
 ```
+
+\* Must Be Logged In
