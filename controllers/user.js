@@ -16,9 +16,8 @@ const AWS = require("../utils/aws");
 const s3 = new AWS.S3();
 
 exports.signup = async (req, res) => {
-	console.log(req.body.body, req.file);
 	// Setting Variables
-	const body = JSON.parse(req.body.body);
+	const body = req.body;
 	const { username, email, password } = body;
 	const MIME_TYPES = {
 		"image/jpg": "jpg",
@@ -124,13 +123,9 @@ exports.login = async (req, res) => {
 		await user.save();
 
 		// Generate JWT token
-		const token = jwt.sign(
-			{ id: user._id, username: user.username },
-			process.env.JWT_SECRET,
-			{
-				expiresIn: "15m",
-			}
-		);
+		const token = jwt.sign({ user }, process.env.JWT_SECRET, {
+			expiresIn: "15m",
+		});
 
 		// Generate Refresh token
 		const refresh = jwt.sign({ id: user._id }, process.env.REFRESH_JWT_SECRET, {
@@ -144,8 +139,10 @@ exports.login = async (req, res) => {
 		deleteExpiredRevokedTokens();
 
 		// Adding JWT to a Cookie
-		res.cookie("jwt", token, { httpOnly: true });
-		res.cookie("refresh", refresh, { httpOnly: true }).json({ success: true });
+		res.cookie("jwt", token, { httpOnly: true, same_site: "none" });
+		res
+			.cookie("refresh", refresh, { httpOnly: true })
+			.json({ success: true, user });
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ error: "Internal server error." });
@@ -223,6 +220,24 @@ exports.refresh = async (req, res) => {
 		);
 
 		res.cookie("jwt", token, { httpOnly: true }).json({ success: true });
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error." });
+	}
+};
+
+exports.persist = async (req, res) => {
+	try {
+		const user = await User.findById(req.user.user._id);
+		console.log(req.user);
+		if (!user) {
+			return res.status(404).json({ error: "User not found." });
+		}
+
+		user.lastLogin = Date.now();
+		await User.updateOne({ _id: req.user.user.id }, user);
+
+		res.json({ user });
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ error: "Internal server error." });

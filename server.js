@@ -3,6 +3,8 @@
 const http = require("http");
 const app = require("./app");
 
+const { Server } = require("socket.io");
+
 // Assigning a port
 
 const normalizePort = (val) => {
@@ -51,6 +53,40 @@ server.on("listening", () => {
 	const address = server.address();
 	const bind = typeof address === "string" ? "pipe " + address : "port " + port;
 	console.log("Listening on " + bind);
+});
+
+// Settup up a Web Socket
+
+const io = new Server(server, {
+	cors: {
+		origin: "http://localhost:5173",
+		methods: ["GET", "POST"],
+		credentials: true,
+	},
+});
+
+const onlineUsers = new Set();
+const userSockets = {};
+
+io.on("connection", (socket) => {
+	// Add user to online users set
+	socket.on("addUser", (userId) => {
+		userSockets[userId] = socket.id;
+		onlineUsers.add(userId);
+		io.emit("onlineUsers", Array.from(onlineUsers));
+		console.log("User Added: ", userId);
+	});
+
+	// Handle a Like Action
+	socket.on("like", ({ userId }) => {
+		io.emit("liked");
+	});
+
+	// When a user disconnects, remove them from the online set
+	socket.on("disconnect", () => {
+		onlineUsers.delete(socket.userId);
+		io.emit("onlineUsers", Array.from(onlineUsers));
+	});
 });
 
 // Active Server Listening

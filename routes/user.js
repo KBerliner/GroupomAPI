@@ -37,6 +37,14 @@ router.post(
 
 router.get("/posts/:id", userCtrl.getPosts);
 
+router.get(
+	"/persist",
+	passport.authenticate("jwt", { session: false }),
+	userCtrl.persist
+);
+
+// TODO: Add an "Edit Account" route
+
 // Exporting Routes
 
 module.exports = router;

@@ -30,7 +30,12 @@ db();
 
 // Setting up CORS
 
-app.use(cors());
+app.use(
+	cors({
+		origin: "http://localhost:5173",
+		credentials: true,
+	})
+);
 
 // Request Routing
 

@@ -13,6 +13,9 @@ const postSchema = mongoose.Schema({
 		type: String,
 		required: true,
 	},
+	authorPFP: {
+		type: String,
+	},
 	authorId: {
 		type: String,
 		required: true,
