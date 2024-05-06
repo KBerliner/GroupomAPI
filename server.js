@@ -77,10 +77,49 @@ io.on("connection", (socket) => {
 		console.log("User Added: ", userId);
 	});
 
-	// Handle a Like Action
-	socket.on("like", ({ userId }) => {
-		io.emit("liked");
+	// Handle a Friend Request
+	socket.on(
+		"friendRequest",
+		({ senderId, recipientId, senderName, senderPfp }) => {
+			const recipientSocketId = userSockets[recipientId];
+			console.log(senderName, recipientSocketId);
+			if (recipientSocketId) {
+				io.to(recipientSocketId).emit("receivedFriendRequest", {
+					senderPfp,
+					senderId,
+					senderName,
+					date: new Date().toLocaleTimeString(),
+				});
+			}
+		}
+	);
+
+	// Handling a Denied Friend Request
+	socket.on("friendRequestDeny", ({ senderId, recipientId }) => {
+		const recipientSocketId = userSockets[recipientId];
+		if (recipientSocketId) {
+			io.to(recipientSocketId).emit("deniedFriendRequest", {
+				senderId,
+				senderName,
+			});
+		}
 	});
+
+	// Handling an Accepted Friend Request
+	socket.on(
+		"friendRequestAccept",
+		({ senderId, recipientId, senderName, senderPfp }) => {
+			const recipientSocketId = userSockets[recipientId];
+			if (recipientSocketId) {
+				io.to(recipientSocketId).emit("acceptedFriendRequest", {
+					senderPfp,
+					senderId,
+					senderName,
+					date: new Date().toLocaleTimeString(),
+				});
+			}
+		}
+	);
 
 	// When a user disconnects, remove them from the online set
 	socket.on("disconnect", () => {

@@ -14,6 +14,10 @@ const userSchema = new mongoose.Schema({
 	created: { type: Date, default: Date.now },
 	updatedAt: { type: Date, default: Date.now },
 	profilePictureUrl: { type: String },
+	sentRequests: { type: Array, default: [] },
+	receivedRequests: { type: Array, default: [] },
+	friends: { type: Array, default: [] },
+	blocked: { type: Array, default: [] },
 });
 
 // Encrypting the Password before saving to the database
