@@ -245,6 +245,10 @@ exports.persist = async (req, res) => {
 };
 
 exports.sendFriendRequest = async (req, res) => {
+	// TODO: handle checking if the user is blocked
+	// TODO: handle checking if the user is already friends
+	// TODO: handle checking if the user has already sent a friend request
+
 	try {
 		const user = await User.findById(req.user.user._id);
 		const recipient = await User.findById(req.body.recipientId);
@@ -264,3 +268,33 @@ exports.sendFriendRequest = async (req, res) => {
 		res.status(500).json({ error: "Internal server error." });
 	}
 };
+
+exports.denyFriendRequest = async (req, res) => {
+	try {
+		const user = await User.findById(req.user.user._id);
+		const sender = await User.findById(req.body.senderId);
+
+		if (!user || !recipient) {
+			return res.status(404).json({ error: "User or recipient not found." });
+		}
+
+		user.receivedRequests.filter(
+			(request) => request.senderId !== req.body.senderId
+		);
+
+		sender.sentRequests.filter(
+			(request) => request.recipientId !== req.body.recipientId
+		);
+
+		await User.updateOne({ _id: req.user.user.id }, user);
+		await User.updateOne({ _id: req.body.senderId }, sender);
+
+		res.status(200).json(req.body);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error." });
+	}
+};
+
+// TODO: Accept Friend Request Endpoint
+// TODO: Block User Endpoint
