@@ -43,6 +43,12 @@ router.get(
 	userCtrl.persist
 );
 
+router.post(
+	"/sendFriendRequest",
+	passport.authenticate("jwt", { session: false }),
+	userCtrl.sendFriendRequest
+);
+
 // TODO: Add an "Edit Account" route
 
 // Exporting Routes
