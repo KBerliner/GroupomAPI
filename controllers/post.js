@@ -45,7 +45,7 @@ exports.createPost = async (req, res) => {
 						...req.body,
 					});
 					await post.save();
-					res.status(201).json({ success: true });
+					res.status(201).json({ post });
 				} catch (error) {
 					console.error(error);
 					res.status(500).json({ error: "Internal server error." });
@@ -62,7 +62,7 @@ exports.createPost = async (req, res) => {
 			});
 
 			await post.save();
-			res.status(201).json({ success: true });
+			res.status(201).json({ post });
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ error: "Internal server error." });
