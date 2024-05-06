@@ -243,3 +243,24 @@ exports.persist = async (req, res) => {
 		res.status(500).json({ error: "Internal server error." });
 	}
 };
+
+exports.sendFriendRequest = async (req, res) => {
+	try {
+		const user = await User.findById(req.user.user._id);
+		const recipient = await User.findById(req.body.recipientId);
+		if (!user || !recipient) {
+			return res.status(404).json({ error: "User or recipient not found." });
+		}
+
+		user.sentRequests.push(req.body);
+		recipient.receivedRequests.push(req.body);
+
+		await User.updateOne({ _id: req.user.user.id }, user);
+		await User.updateOne({ _id: req.body.recipientId }, recipient);
+
+		res.status(201).json(req.body);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error." });
+	}
+};
