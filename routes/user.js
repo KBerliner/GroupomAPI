@@ -49,6 +49,24 @@ router.post(
 	userCtrl.sendFriendRequest
 );
 
+router.post(
+	"/denyFriendRequest",
+	passport.authenticate("jwt", { session: false }),
+	userCtrl.denyFriendRequest
+);
+
+router.post(
+	"/acceptFriendRequest",
+	passport.authenticate("jwt", { session: false }),
+	userCtrl.acceptFriendRequest
+);
+
+router.post(
+	"/block",
+	passport.authenticate("jwt", { session: false }),
+	userCtrl.block
+);
+
 // TODO: Add an "Edit Account" route
 
 // Exporting Routes
