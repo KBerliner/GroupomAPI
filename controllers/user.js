@@ -246,9 +246,11 @@ exports.persist = async (req, res) => {
 
 exports.sendFriendRequest = async (req, res) => {
 	try {
+		console.log("heres the req body", req.body);
 		const user = await User.findById(req.user.user._id);
 		const recipient = await User.findById(req.body.recipientId);
 		if (!user || !recipient) {
+			console.log(user, req.body);
 			return res.status(404).json({ error: "User or recipient not found." });
 		}
 
@@ -260,7 +262,14 @@ exports.sendFriendRequest = async (req, res) => {
 			return res.status(403).json({ error: "User is already friends." });
 		}
 
-		if (recipient.receivedRequests.includes(user._id)) {
+		if (
+			recipient.receivedRequests.findIndex(
+				(request) => request.senderId === user._id
+			) !== -1 ||
+			user.sentRequests.findIndex(
+				(request) => request.recipientId === req.body.recipientId
+			) !== -1
+		) {
 			return res
 				.status(403)
 				.json({ error: "User has already sent a friend request." });
@@ -271,15 +280,12 @@ exports.sendFriendRequest = async (req, res) => {
 				(request) => request.recipientId === user._id
 			).length > 0
 		) {
-			user.sentRequests.filter(
-				(request) => request.recipientId !== recipient._id
-			);
 			recipient.sentRequests.filter(
 				(request) => request.recipientId !== user._id
 			);
 
 			await User.updateOne({ _id: user._id }, user);
-			await User.updateOne({ _id: recipient._id }, recipient);
+			await User.updateOne({ _id: req.body.recipientId }, recipient);
 
 			return res.status(200).json(req.body);
 		}

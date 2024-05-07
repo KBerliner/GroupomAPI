@@ -210,6 +210,6 @@ exports.getAllPosts = async (req, res) => {
 		res.status(200).json(posts);
 	} catch (error) {
 		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		res.status(500).json({ error });
 	}
 };
