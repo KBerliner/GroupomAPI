@@ -245,10 +245,6 @@ exports.persist = async (req, res) => {
 };
 
 exports.sendFriendRequest = async (req, res) => {
-	// TODO: handle checking if the user is blocked
-	// TODO: handle checking if the user is already friends
-	// TODO: handle checking if the user has already sent a friend request
-
 	try {
 		const user = await User.findById(req.user.user._id);
 		const recipient = await User.findById(req.body.recipientId);
@@ -256,10 +252,42 @@ exports.sendFriendRequest = async (req, res) => {
 			return res.status(404).json({ error: "User or recipient not found." });
 		}
 
+		if (recipient.blocked.includes(user._id)) {
+			return res.status(403).json({ error: "User is blocked." });
+		}
+
+		if (recipient.friends.includes(user._id)) {
+			return res.status(403).json({ error: "User is already friends." });
+		}
+
+		if (recipient.receivedRequests.includes(user._id)) {
+			return res
+				.status(403)
+				.json({ error: "User has already sent a friend request." });
+		}
+
+		if (
+			recipient.sentRequests.filter(
+				(request) => request.recipientId === user._id
+			).length > 0
+		) {
+			user.sentRequests.filter(
+				(request) => request.recipientId !== recipient._id
+			);
+			recipient.sentRequests.filter(
+				(request) => request.recipientId !== user._id
+			);
+
+			await User.updateOne({ _id: user._id }, user);
+			await User.updateOne({ _id: recipient._id }, recipient);
+
+			return res.status(200).json(req.body);
+		}
+
 		user.sentRequests.push(req.body);
 		recipient.receivedRequests.push(req.body);
 
-		await User.updateOne({ _id: req.user.user.id }, user);
+		await User.updateOne({ _id: user._id }, user);
 		await User.updateOne({ _id: req.body.recipientId }, recipient);
 
 		res.status(201).json(req.body);
@@ -274,8 +302,8 @@ exports.denyFriendRequest = async (req, res) => {
 		const user = await User.findById(req.user.user._id);
 		const sender = await User.findById(req.body.senderId);
 
-		if (!user || !recipient) {
-			return res.status(404).json({ error: "User or recipient not found." });
+		if (!user || !sender) {
+			return res.status(404).json({ error: "User or sender not found." });
 		}
 
 		user.receivedRequests.filter(
@@ -296,5 +324,67 @@ exports.denyFriendRequest = async (req, res) => {
 	}
 };
 
-// TODO: Accept Friend Request Endpoint
+exports.acceptFriendRequest = async (req, res) => {
+	try {
+		const user = await User.findById(req.user.user._id);
+		const sender = await User.findById(req.body.senderId);
+
+		if (!user || !sender) {
+			return res.status(404).json({ error: "User or sender not found." });
+		}
+
+		user.receivedRequests.filter(
+			(request) => request.senderId !== req.body.senderId
+		);
+
+		sender.sentRequests.filter(
+			(request) => request.recipientId !== req.body.recipientId
+		);
+
+		user.friends.push({
+			_id: req.body.senderId,
+			username: req.body.senderName,
+			senderPfp: req.body.senderPfp,
+			date: req.body.date,
+		});
+		sender.friends.push({
+			_id: user._id,
+			username: user.username,
+			senderPfp: user.profilePictureUrl,
+			date: req.body.date,
+		});
+
+		await User.updateOne({ _id: user._id }, user);
+		await User.updateOne({ _id: req.body.senderId }, sender);
+
+		res.status(200).json(req.body);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error." });
+	}
+};
+
 // TODO: Block User Endpoint
+exports.block = async (req, res) => {
+	try {
+		const user = await User.findById(req.user.user._id);
+		const recipient = await User.findById(req.body.recipientId);
+
+		if (!user || !recipient) {
+			return res.status(404).json({ error: "User or recipient not found." });
+		}
+
+		if (recipient.blocked.includes(user._id)) {
+			return res.status(403).json({ error: "User is already blocked." });
+		}
+
+		user.blocked.push(recipient._id);
+
+		await User.updateOne({ _id: user._id }, user);
+
+		res.status(200).json(req.body);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error." });
+	}
+};
