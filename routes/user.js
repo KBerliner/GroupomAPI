@@ -24,6 +24,13 @@ router.get(
 	passport.authenticate("jwt", { session: false }),
 	userCtrl.getUsers
 );
+
+router.put(
+	"/",
+	passport.authenticate("jwt", { session: false }),
+	userCtrl.editUser
+);
+
 router.delete(
 	"/",
 	passport.authenticate("jwt", { session: false }),
@@ -43,31 +50,29 @@ router.get(
 	userCtrl.persist
 );
 
-router.post(
+router.put(
 	"/sendFriendRequest",
 	passport.authenticate("jwt", { session: false }),
 	userCtrl.sendFriendRequest
 );
 
-router.post(
+router.put(
 	"/denyFriendRequest",
 	passport.authenticate("jwt", { session: false }),
 	userCtrl.denyFriendRequest
 );
 
-router.post(
+router.put(
 	"/acceptFriendRequest",
 	passport.authenticate("jwt", { session: false }),
 	userCtrl.acceptFriendRequest
 );
 
-router.post(
+router.put(
 	"/block",
 	passport.authenticate("jwt", { session: false }),
 	userCtrl.block
 );
-
-// TODO: Add an "Edit Account" route
 
 // Exporting Routes
 
