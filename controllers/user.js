@@ -125,7 +125,7 @@ exports.login = async (req, res) => {
 		await user.save();
 
 		// Generate JWT token
-		console.log(user);
+		console.log(user.profilePictureUrl.split("/"));
 		const token = jwt.sign(
 			{
 				_id: user._id,
@@ -204,8 +204,14 @@ exports.deleteUser = async (req, res) => {
 			return res.status(404).json({ error: "User not found." });
 		}
 
-		// TODO: remove the cookie
-		// TODO: remove the s3 image from db
+		if (user?.profilePictureUrl) {
+			await s3
+				.deleteObject({
+					Bucket: "groupomaniapfp",
+					Key: user.profilePictureUrl.split("/")[3],
+				})
+				.promise();
+		}
 
 		// Deleting the user's posts
 		await Post.deleteMany({ authorId: req.user._id });
