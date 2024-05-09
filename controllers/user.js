@@ -204,7 +204,7 @@ exports.deleteUser = async (req, res) => {
 			return res.status(404).json({ error: "User not found." });
 		}
 
-		// TODO: remove the cookie and the user's posts
+		// TODO: remove the cookie
 		// TODO: remove the s3 image from db
 
 		// Deleting the user's posts
@@ -482,6 +482,24 @@ exports.block = async (req, res) => {
 		// Returning an error if the recipient is already blocked
 		if (user.blocked.includes(recipient._id)) {
 			return res.status(403).json({ error: "User is already blocked." });
+		}
+
+		if (
+			user.friends.findIndex((friend) => friend.senderId === recipient._id) !==
+			-1
+		) {
+			// Removing the friend from the user's friends array
+			user.friends = user.friends.filter(
+				(friend) => friend.senderId !== recipient._id
+			);
+
+			// Removing the friend from the recipient's friends array
+			recipient.friends = recipient.friends.filter(
+				(friend) => friend.senderId !== user._id
+			);
+
+			// Updating the Database
+			await User.updateOne({ _id: req.body.recipientId }, recipient);
 		}
 
 		// Adding the recipient to the user's blocked array
