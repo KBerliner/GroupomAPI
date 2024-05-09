@@ -145,9 +145,13 @@ exports.login = async (req, res) => {
 		);
 
 		// Generate Refresh token
-		const refresh = jwt.sign({ id: user._id }, process.env.REFRESH_JWT_SECRET, {
-			expiresIn: "7d",
-		});
+		const refresh = jwt.sign(
+			{ _id: user._id },
+			process.env.REFRESH_JWT_SECRET,
+			{
+				expiresIn: "7d",
+			}
+		);
 
 		// Remove password from the response
 		user.password = undefined;
@@ -168,7 +172,10 @@ exports.login = async (req, res) => {
 
 exports.logout = async (req, res) => {
 	try {
+		// Adding revoked JWT token to the list so that it can't be used again
 		addRevokedToken(req);
+
+		// Clearing cookies
 		res.clearCookie("refresh");
 		res.clearCookie("jwt").json({ success: true });
 	} catch (error) {
@@ -178,6 +185,7 @@ exports.logout = async (req, res) => {
 
 exports.getUsers = async (req, res) => {
 	try {
+		// Finding all users
 		const users = await User.find();
 		res.json(users);
 	} catch (error) {
@@ -190,6 +198,7 @@ exports.getUsers = async (req, res) => {
 
 exports.deleteUser = async (req, res) => {
 	try {
+		// Finding and deleting the user
 		const user = await User.findByIdAndDelete(req.user._id);
 		if (!user) {
 			return res.status(404).json({ error: "User not found." });
@@ -197,8 +206,13 @@ exports.deleteUser = async (req, res) => {
 
 		// TODO: remove the cookie and the user's posts
 		// TODO: remove the s3 image from db
+
+		// Deleting the user's posts
 		await Post.deleteMany({ authorId: req.user._id });
-		res.cookie("jwt", "", { maxAge: 1 }).json({ success: true });
+
+		// Clearing the JWT cookies from the browser
+		res.clearCookie("refresh");
+		res.clearCookie("jwt").json({ success: true });
 	} catch (error) {
 		handleError(error);
 	}
@@ -206,7 +220,8 @@ exports.deleteUser = async (req, res) => {
 
 exports.getPosts = async (req, res) => {
 	try {
-		const posts = await Post.find({ _id: req.params.id });
+		// Finding all of one user's posts
+		const posts = await Post.find({ authorId: req.params.id });
 		res.json(posts);
 	} catch (error) {
 		handleError(error);
@@ -215,6 +230,7 @@ exports.getPosts = async (req, res) => {
 
 exports.refresh = async (req, res) => {
 	try {
+		// Getting the refresh token from the cookie
 		const refreshToken = req.cookies["refresh"];
 
 		// Checking if the refresh token is revoked
@@ -223,11 +239,13 @@ exports.refresh = async (req, res) => {
 			return res.status(401).json({ error: "Refresh token Revoked!" });
 		}
 
+		// Finding the user from the refresh token
 		const user = await User.findById(req.user._id);
 		if (!user) {
 			return res.status(404).json({ error: "User not found." });
 		}
 
+		// Generating a new JWT session token
 		const token = jwt.sign(
 			{ id: user._id, username: user.username },
 			process.env.JWT_SECRET,
@@ -236,6 +254,7 @@ exports.refresh = async (req, res) => {
 			}
 		);
 
+		// Assigning the token to a cookie in the response
 		res.cookie("jwt", token, { httpOnly: true }).json({ success: true });
 	} catch (error) {
 		handleError(error);
@@ -244,14 +263,17 @@ exports.refresh = async (req, res) => {
 
 exports.persist = async (req, res) => {
 	try {
+		// Finding the user from the refresh token
 		const user = await User.findById(req.user._id);
 		if (!user) {
 			return res.status(404).json({ error: "User not found." });
 		}
 
+		// Updating the last login time of the user
 		user.lastLogin = Date.now();
 		await User.updateOne({ _id: req.user.id }, user);
 
+		// Removing the password from the response
 		user.password = undefined;
 
 		res.json({ user });
@@ -262,16 +284,21 @@ exports.persist = async (req, res) => {
 
 exports.sendFriendRequest = async (req, res) => {
 	try {
+		// Finding both the user and the recipient
 		const user = await User.findById(req.user._id);
 		const recipient = await User.findById(req.body.recipientId);
+
+		// Returning an error if neither the user nor the recipient exist
 		if (!user || !recipient) {
 			return res.status(404).json({ error: "User or recipient not found." });
 		}
 
+		// Returning an error if the user is blocked by the recipient
 		if (recipient.blocked.includes(user)) {
 			return res.status(403).json({ error: "User is blocked." });
 		}
 
+		// Returning an error if the user and recipient are already friends
 		if (
 			recipient.friends.findIndex(
 				(friend) => friend.senderId == user._id.toString()
@@ -280,6 +307,7 @@ exports.sendFriendRequest = async (req, res) => {
 			return res.status(403).json({ error: "User is already friends." });
 		}
 
+		// Returning an error if the user has already sent a friend request to the recipient
 		if (
 			recipient.receivedRequests.findIndex(
 				(request) => request.senderId === user._id.toString()
@@ -293,29 +321,37 @@ exports.sendFriendRequest = async (req, res) => {
 				.json({ error: "User has already sent a friend request." });
 		}
 
+		// Making the user and recipient friends if the recipient has already sent a friend request to the user
 		if (
 			recipient.sentRequests.findIndex(
 				(request) => request.recipientId == user._id.toString()
 			) !== -1
 		) {
+			// Removing the friend request from the recipient's sentRequests array
 			recipient.sentRequests = recipient.sentRequests.filter(
 				(request) => request.recipientId !== user._id.toString()
 			);
+
+			// Removing the friend request from the user's receivedRequests array
 			user.receivedRequests = user.receivedRequests.filter(
 				(request) => request.senderId !== recipient._id.toString()
 			);
 
+			// Adding the friend to the user's friends array
 			user.friends.push({
 				senderId: recipient._id.toString(),
 				senderName: recipient.username,
 				date: Date.now(),
 			});
+
+			// Adding the friend to the recipient's friends array
 			recipient.friends.push({
 				senderId: user._id.toString(),
 				senderName: user.username,
 				date: Date.now(),
 			});
 
+			// Updating the Database
 			await User.updateOne({ _id: user._id }, user);
 			await User.updateOne({ _id: req.body.recipientId }, recipient);
 
@@ -325,13 +361,20 @@ exports.sendFriendRequest = async (req, res) => {
 					senderName: recipient.username,
 					date: Date.now(),
 				},
+				// The friend type tells redux how to handle the response
 				type: "friend",
 			});
 		}
 
+		// If none of the previous conditions apply \/\/\/
+
+		// The request gets added to the user's sentRequests array
 		user.sentRequests.push(req.body);
+
+		// The request gets added to the recipient's receivedRequests array
 		recipient.receivedRequests.push(req.body);
 
+		// Updating the Database
 		await User.updateOne({ _id: user._id }, user);
 		await User.updateOne({ _id: req.body.recipientId }, recipient);
 
@@ -341,6 +384,7 @@ exports.sendFriendRequest = async (req, res) => {
 				senderName: recipient.username,
 				date: Date.now(),
 			},
+			// The sent type tells redux how to handle the response
 			type: "sent",
 		});
 	} catch (error) {
@@ -350,21 +394,26 @@ exports.sendFriendRequest = async (req, res) => {
 
 exports.denyFriendRequest = async (req, res) => {
 	try {
+		// Finding both the user and the sender
 		const user = await User.findById(req.user._id);
 		const sender = await User.findById(req.body.senderId);
 
+		// Returning an error if neither the user nor the sender exist
 		if (!user || !sender) {
 			return res.status(404).json({ error: "User or sender not found." });
 		}
 
+		// Removing the request from the user's receivedRequests array
 		user.receivedRequests.filter(
 			(request) => request.senderId !== req.body.senderId
 		);
 
+		// Removing the request from the recipient's sentRequests array
 		sender.sentRequests.filter(
 			(request) => request.recipientId !== req.body.recipientId
 		);
 
+		// Updating the Database
 		await User.updateOne({ _id: req.user.id }, user);
 		await User.updateOne({ _id: req.body.senderId }, sender);
 
@@ -376,34 +425,40 @@ exports.denyFriendRequest = async (req, res) => {
 
 exports.acceptFriendRequest = async (req, res) => {
 	try {
+		// Finding both the user and the sender
 		const user = await User.findById(req.user._id);
 		const sender = await User.findById(req.body.senderId);
 
+		// Returning an error if neither the user nor the sender exist
 		if (!user || !sender) {
 			return res.status(404).json({ error: "User or sender not found." });
 		}
 
+		// Removing the request from the user's receivedRequests array
 		user.receivedRequests.filter(
 			(request) => request.senderId !== req.body.senderId
 		);
 
+		// Removing the request from the sender's sentRequests array
 		sender.sentRequests.filter(
 			(request) => request.recipientId !== req.body.recipientId
 		);
 
+		// Adding the friend to the user's friends array
 		user.friends.push({
-			_id: req.body.senderId,
-			username: req.body.senderName,
-			senderPfp: req.body.senderPfp,
-			date: req.body.date,
-		});
-		sender.friends.push({
-			_id: user._id,
-			username: user.username,
-			senderPfp: user.profilePictureUrl,
-			date: req.body.date,
+			senderId: sender._id.toString(),
+			senderName: sender.username,
+			date: Date.now(),
 		});
 
+		// Adding the friend to the sender's friends array
+		sender.friends.push({
+			senderId: user._id.toString(),
+			senderName: user.username,
+			date: Date.now(),
+		});
+
+		// Updating the Database
 		await User.updateOne({ _id: user._id }, user);
 		await User.updateOne({ _id: req.body.senderId }, sender);
 
@@ -415,19 +470,24 @@ exports.acceptFriendRequest = async (req, res) => {
 
 exports.block = async (req, res) => {
 	try {
+		// Finding both the user and the recipient
 		const user = await User.findById(req.user._id);
 		const recipient = await User.findById(req.body.recipientId);
 
+		// Returning an error if neither the user nor the recipient exist
 		if (!user || !recipient) {
 			return res.status(404).json({ error: "User or recipient not found." });
 		}
 
-		if (recipient.blocked.includes(user._id)) {
+		// Returning an error if the recipient is already blocked
+		if (user.blocked.includes(recipient._id)) {
 			return res.status(403).json({ error: "User is already blocked." });
 		}
 
+		// Adding the recipient to the user's blocked array
 		user.blocked.push(recipient._id);
 
+		// Updating the Database
 		await User.updateOne({ _id: user._id }, user);
 
 		res.status(200).json(req.body);
