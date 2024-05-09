@@ -15,6 +15,12 @@ const AWS = require("../utils/aws");
 // Initializing S3 instance
 const s3 = new AWS.S3();
 
+// Reducing repetition with an error handling function
+const handleError = (error) => {
+	console.error(error);
+	res.status(500).json({ error: "Internal server error." });
+};
+
 exports.signup = async (req, res) => {
 	// Setting Variables
 	const body = req.body;
@@ -67,8 +73,7 @@ exports.signup = async (req, res) => {
 						res.status(400).json({ error: "Email is already taken." });
 					} else {
 						// Other errors
-						console.error(error);
-						res.status(500).json({ error: "Internal server error." });
+						handleError(error);
 					}
 				}
 			}
@@ -87,8 +92,7 @@ exports.signup = async (req, res) => {
 				res.status(400).json({ error: "Email is already taken." });
 			} else {
 				// Other errors
-				console.error(error);
-				res.status(500).json({ error: "Internal server error." });
+				handleError(error);
 			}
 		}
 	}
@@ -121,9 +125,24 @@ exports.login = async (req, res) => {
 		await user.save();
 
 		// Generate JWT token
-		const token = jwt.sign({ user }, process.env.JWT_SECRET, {
-			expiresIn: "15m",
-		});
+		console.log(user);
+		const token = jwt.sign(
+			{
+				_id: user._id,
+				username: user.username,
+				email: user.email,
+				role: user.role,
+				sentRequests: user.sentRequests,
+				receivedRequests: user.receivedRequests,
+				friends: user.friends,
+				blocked: user.blocked,
+				profilePictureUrl: user.profilePictureUrl || "",
+			},
+			process.env.JWT_SECRET,
+			{
+				expiresIn: "15m",
+			}
+		);
 
 		// Generate Refresh token
 		const refresh = jwt.sign({ id: user._id }, process.env.REFRESH_JWT_SECRET, {
@@ -132,6 +151,7 @@ exports.login = async (req, res) => {
 
 		// Remove password from the response
 		user.password = undefined;
+		console.log(user);
 
 		// Delete all expired refresh tokens from the Database
 		deleteExpiredRevokedTokens();
@@ -142,8 +162,7 @@ exports.login = async (req, res) => {
 			.cookie("refresh", refresh, { httpOnly: true })
 			.json({ success: true, user });
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
 
@@ -153,8 +172,7 @@ exports.logout = async (req, res) => {
 		res.clearCookie("refresh");
 		res.clearCookie("jwt").json({ success: true });
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
 
@@ -163,24 +181,26 @@ exports.getUsers = async (req, res) => {
 		const users = await User.find();
 		res.json(users);
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
 
+// TODO: add an edit User endpoint
+// TODO: add functionality to delete and reupload the s3 image on edit
+
 exports.deleteUser = async (req, res) => {
 	try {
-		const user = await User.findByIdAndDelete(req.user.user._id);
+		const user = await User.findByIdAndDelete(req.user._id);
 		if (!user) {
 			return res.status(404).json({ error: "User not found." });
 		}
 
 		// TODO: remove the cookie and the user's posts
-		await Post.deleteMany({ authorId: req.user.id });
+		// TODO: remove the s3 image from db
+		await Post.deleteMany({ authorId: req.user._id });
 		res.cookie("jwt", "", { maxAge: 1 }).json({ success: true });
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
 
@@ -189,8 +209,7 @@ exports.getPosts = async (req, res) => {
 		const posts = await Post.find({ _id: req.params.id });
 		res.json(posts);
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
 
@@ -204,7 +223,7 @@ exports.refresh = async (req, res) => {
 			return res.status(401).json({ error: "Refresh token Revoked!" });
 		}
 
-		const user = await User.findById(req.user.id);
+		const user = await User.findById(req.user._id);
 		if (!user) {
 			return res.status(404).json({ error: "User not found." });
 		}
@@ -219,31 +238,31 @@ exports.refresh = async (req, res) => {
 
 		res.cookie("jwt", token, { httpOnly: true }).json({ success: true });
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
 
 exports.persist = async (req, res) => {
 	try {
-		const user = await User.findById(req.user.user._id);
+		const user = await User.findById(req.user._id);
 		if (!user) {
 			return res.status(404).json({ error: "User not found." });
 		}
 
 		user.lastLogin = Date.now();
-		await User.updateOne({ _id: req.user.user.id }, user);
+		await User.updateOne({ _id: req.user.id }, user);
+
+		user.password = undefined;
 
 		res.json({ user });
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
 
 exports.sendFriendRequest = async (req, res) => {
 	try {
-		const user = await User.findById(req.user.user._id);
+		const user = await User.findById(req.user._id);
 		const recipient = await User.findById(req.body.recipientId);
 		if (!user || !recipient) {
 			return res.status(404).json({ error: "User or recipient not found." });
@@ -325,14 +344,13 @@ exports.sendFriendRequest = async (req, res) => {
 			type: "sent",
 		});
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
 
 exports.denyFriendRequest = async (req, res) => {
 	try {
-		const user = await User.findById(req.user.user._id);
+		const user = await User.findById(req.user._id);
 		const sender = await User.findById(req.body.senderId);
 
 		if (!user || !sender) {
@@ -347,19 +365,18 @@ exports.denyFriendRequest = async (req, res) => {
 			(request) => request.recipientId !== req.body.recipientId
 		);
 
-		await User.updateOne({ _id: req.user.user.id }, user);
+		await User.updateOne({ _id: req.user.id }, user);
 		await User.updateOne({ _id: req.body.senderId }, sender);
 
 		res.status(200).json(req.body);
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
 
 exports.acceptFriendRequest = async (req, res) => {
 	try {
-		const user = await User.findById(req.user.user._id);
+		const user = await User.findById(req.user._id);
 		const sender = await User.findById(req.body.senderId);
 
 		if (!user || !sender) {
@@ -392,14 +409,13 @@ exports.acceptFriendRequest = async (req, res) => {
 
 		res.status(200).json(req.body);
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
 
 exports.block = async (req, res) => {
 	try {
-		const user = await User.findById(req.user.user._id);
+		const user = await User.findById(req.user._id);
 		const recipient = await User.findById(req.body.recipientId);
 
 		if (!user || !recipient) {
@@ -416,7 +432,6 @@ exports.block = async (req, res) => {
 
 		res.status(200).json(req.body);
 	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+		handleError(error);
 	}
 };
