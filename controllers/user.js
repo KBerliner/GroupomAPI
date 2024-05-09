@@ -56,7 +56,6 @@ exports.signup = async (req, res) => {
 				// Adding the URL to the user Object
 				user = new User({ ...body, profilePictureUrl: data.Location });
 				try {
-					console.log("USER: ", user);
 					// Save the user to the database
 					await user.save();
 					// Remove the password from the response
@@ -77,7 +76,6 @@ exports.signup = async (req, res) => {
 	} else {
 		user = new User(body);
 		try {
-			console.log("USER: ", user);
 			// Save the user to the database
 			await user.save();
 			// Remove the password from the response
@@ -229,7 +227,6 @@ exports.refresh = async (req, res) => {
 exports.persist = async (req, res) => {
 	try {
 		const user = await User.findById(req.user.user._id);
-		console.log(req.user);
 		if (!user) {
 			return res.status(404).json({ error: "User not found." });
 		}
@@ -246,7 +243,6 @@ exports.persist = async (req, res) => {
 
 exports.sendFriendRequest = async (req, res) => {
 	try {
-		console.log("heres the req body", req.body);
 		const user = await User.findById(req.user.user._id);
 		const recipient = await User.findById(req.body.recipientId);
 		if (!user || !recipient) {
@@ -257,11 +253,6 @@ exports.sendFriendRequest = async (req, res) => {
 			return res.status(403).json({ error: "User is blocked." });
 		}
 
-		// console.log(
-		// 	recipient.friends[0],
-		// 	user._id,
-		// 	recipient.friends[0].senderId == user._id.toString()
-		// );
 		if (
 			recipient.friends.findIndex(
 				(friend) => friend.senderId == user._id.toString()
@@ -283,24 +274,11 @@ exports.sendFriendRequest = async (req, res) => {
 				.json({ error: "User has already sent a friend request." });
 		}
 
-		// console.log(
-		// 	"This is the recipient's sent requests and the user's id: ",
-		// 	recipient.sentRequests,
-		// 	user._id.toString()
-		// );
-
 		if (
 			recipient.sentRequests.findIndex(
 				(request) => request.recipientId == user._id.toString()
 			) !== -1
 		) {
-			// console.log("they will be friends");
-			console.log(
-				recipient.sentRequests,
-				recipient.sentRequests.filter(
-					(request) => request.recipientId !== user._id.toString()
-				)
-			);
 			recipient.sentRequests = recipient.sentRequests.filter(
 				(request) => request.recipientId !== user._id.toString()
 			);
@@ -331,8 +309,6 @@ exports.sendFriendRequest = async (req, res) => {
 				type: "friend",
 			});
 		}
-
-		console.log("Response #2 for some reason");
 
 		user.sentRequests.push(req.body);
 		recipient.receivedRequests.push(req.body);
