@@ -172,7 +172,7 @@ exports.getUsers = async (req, res) => {
 
 exports.deleteUser = async (req, res) => {
 	try {
-		const user = await User.findByIdAndDelete(req.user.id);
+		const user = await User.findByIdAndDelete(req.user.user._id);
 		if (!user) {
 			return res.status(404).json({ error: "User not found." });
 		}
@@ -250,21 +250,29 @@ exports.sendFriendRequest = async (req, res) => {
 		const user = await User.findById(req.user.user._id);
 		const recipient = await User.findById(req.body.recipientId);
 		if (!user || !recipient) {
-			console.log(user, req.body);
 			return res.status(404).json({ error: "User or recipient not found." });
 		}
 
-		if (recipient.blocked.includes(user._id)) {
+		if (recipient.blocked.includes(user)) {
 			return res.status(403).json({ error: "User is blocked." });
 		}
 
-		if (recipient.friends.includes(user._id)) {
+		// console.log(
+		// 	recipient.friends[0],
+		// 	user._id,
+		// 	recipient.friends[0].senderId == user._id.toString()
+		// );
+		if (
+			recipient.friends.findIndex(
+				(friend) => friend.senderId == user._id.toString()
+			) !== -1
+		) {
 			return res.status(403).json({ error: "User is already friends." });
 		}
 
 		if (
 			recipient.receivedRequests.findIndex(
-				(request) => request.senderId === user._id
+				(request) => request.senderId === user._id.toString()
 			) !== -1 ||
 			user.sentRequests.findIndex(
 				(request) => request.recipientId === req.body.recipientId
@@ -275,20 +283,56 @@ exports.sendFriendRequest = async (req, res) => {
 				.json({ error: "User has already sent a friend request." });
 		}
 
+		// console.log(
+		// 	"This is the recipient's sent requests and the user's id: ",
+		// 	recipient.sentRequests,
+		// 	user._id.toString()
+		// );
+
 		if (
-			recipient.sentRequests.filter(
-				(request) => request.recipientId === user._id
-			).length > 0
+			recipient.sentRequests.findIndex(
+				(request) => request.recipientId == user._id.toString()
+			) !== -1
 		) {
-			recipient.sentRequests.filter(
-				(request) => request.recipientId !== user._id
+			// console.log("they will be friends");
+			console.log(
+				recipient.sentRequests,
+				recipient.sentRequests.filter(
+					(request) => request.recipientId !== user._id.toString()
+				)
 			);
+			recipient.sentRequests = recipient.sentRequests.filter(
+				(request) => request.recipientId !== user._id.toString()
+			);
+			user.receivedRequests = user.receivedRequests.filter(
+				(request) => request.senderId !== recipient._id.toString()
+			);
+
+			user.friends.push({
+				senderId: recipient._id.toString(),
+				senderName: recipient.username,
+				date: Date.now(),
+			});
+			recipient.friends.push({
+				senderId: user._id.toString(),
+				senderName: user.username,
+				date: Date.now(),
+			});
 
 			await User.updateOne({ _id: user._id }, user);
 			await User.updateOne({ _id: req.body.recipientId }, recipient);
 
-			return res.status(200).json(req.body);
+			return res.status(200).json({
+				request: {
+					senderId: recipient._id,
+					senderName: recipient.username,
+					date: Date.now(),
+				},
+				type: "friend",
+			});
 		}
+
+		console.log("Response #2 for some reason");
 
 		user.sentRequests.push(req.body);
 		recipient.receivedRequests.push(req.body);
@@ -296,7 +340,14 @@ exports.sendFriendRequest = async (req, res) => {
 		await User.updateOne({ _id: user._id }, user);
 		await User.updateOne({ _id: req.body.recipientId }, recipient);
 
-		res.status(201).json(req.body);
+		res.status(201).json({
+			request: {
+				senderId: recipient._id,
+				senderName: recipient.username,
+				date: Date.now(),
+			},
+			type: "sent",
+		});
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ error: "Internal server error." });
@@ -370,7 +421,6 @@ exports.acceptFriendRequest = async (req, res) => {
 	}
 };
 
-// TODO: Block User Endpoint
 exports.block = async (req, res) => {
 	try {
 		const user = await User.findById(req.user.user._id);

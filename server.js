@@ -82,7 +82,7 @@ io.on("connection", (socket) => {
 		"friendRequest",
 		({ senderId, recipientId, senderName, senderPfp }) => {
 			const recipientSocketId = userSockets[recipientId];
-			console.log(senderName, recipientSocketId);
+			// console.log(senderName, recipientSocketId);
 			if (recipientSocketId) {
 				io.to(recipientSocketId).emit("receivedFriendRequest", {
 					senderPfp,
