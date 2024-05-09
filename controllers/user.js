@@ -196,6 +196,67 @@ exports.getUsers = async (req, res) => {
 // TODO: add an edit User endpoint
 // TODO: add functionality to delete and reupload the s3 image on edit
 
+exports.editUser = async (req, res) => {
+	try {
+		// Finding the user to edit
+		const user = await User.findById(req.user._id);
+
+		// Returning an error if the user doesn't exist
+		if (!user) {
+			return res.status(404).json({ error: "User not found." });
+		}
+
+		// Updating the user object
+		user.email = req.body.email;
+
+		// Checking if the request has a file
+		if (req.file) {
+			// Setting upload parameters for s3
+			const uploadParams = {
+				Bucket: "groupomaniapfp",
+				Key: `${Date.now().toString()}.${MIME_TYPES[req.file.mimetype]}`,
+				Body: req.file.buffer,
+				ContentType: `image/${MIME_TYPES[req.file.mimetype]}`,
+				ContentDisposition: "inline",
+			};
+
+			// Uploading the file to s3
+			s3.upload(uploadParams, async (err, data) => {
+				if (err) {
+					// Handling s3 upload error
+					console.error("Error uploading file to S3: ", err);
+					res.status(500).json({
+						error: "Failed to upload profile picture to S3",
+						message: err,
+					});
+				} else {
+					// Handling s3 upload success
+					console.log("Successfully uploaded profile picture to S3: ", data);
+
+					// Deleting the old profile picture from s3
+					await s3
+						.deleteObject({
+							Bucket: "groupomaniapfp",
+							Key: user.profilePictureUrl.split("/")[3],
+						})
+						.promise();
+
+					// Adding the URL to the user Object
+					user.profilePictureUrl = data.Location;
+				}
+			});
+		}
+	} catch (error) {
+		if (error.code === 11000) {
+			// Duplicate email error
+			res.status(400).json({ error: "Email is already taken." });
+		} else {
+			// Other errors
+			handleError(error);
+		}
+	}
+};
+
 exports.deleteUser = async (req, res) => {
 	try {
 		// Finding and deleting the user
