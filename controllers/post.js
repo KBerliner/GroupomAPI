@@ -13,10 +13,11 @@ exports.createPost = async (req, res) => {
 		"image/jpeg": "jpeg",
 		"image/jpg": "jpg",
 	};
-	const user = req.user.user;
+	const user = req.user;
 
 	// Checking for file in request
 	if (req.file) {
+		console.log("Heres the body: ", req.body);
 		const uploadParams = {
 			Bucket: "groupomaniacontent",
 			Key: `${Date.now().toString()}.${MIME_TYPES[req.file.mimetype]}`,

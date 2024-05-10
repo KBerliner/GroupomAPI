@@ -28,6 +28,7 @@ router.get(
 router.put(
 	"/",
 	passport.authenticate("jwt", { session: false }),
+	multer,
 	userCtrl.editUser
 );
 

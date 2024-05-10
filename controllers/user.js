@@ -16,7 +16,7 @@ const AWS = require("../utils/aws");
 const s3 = new AWS.S3();
 
 // Reducing repetition with an error handling function
-const handleError = (error) => {
+const handleError = (res, error) => {
 	console.error(error);
 	res.status(500).json({ error: "Internal server error." });
 };
@@ -125,7 +125,7 @@ exports.login = async (req, res) => {
 		await user.save();
 
 		// Generate JWT token
-		console.log(user.profilePictureUrl.split("/"));
+		console.log(user?.profilePictureUrl?.split("/"));
 		const token = jwt.sign(
 			{
 				_id: user._id,
@@ -166,7 +166,7 @@ exports.login = async (req, res) => {
 			.cookie("refresh", refresh, { httpOnly: true })
 			.json({ success: true, user });
 	} catch (error) {
-		handleError(error);
+		return handleError(res, error);
 	}
 };
 
@@ -179,7 +179,7 @@ exports.logout = async (req, res) => {
 		res.clearCookie("refresh");
 		res.clearCookie("jwt").json({ success: true });
 	} catch (error) {
-		handleError(error);
+		handleError(res, error);
 	}
 };
 
@@ -189,15 +189,19 @@ exports.getUsers = async (req, res) => {
 		const users = await User.find();
 		res.json(users);
 	} catch (error) {
-		handleError(error);
+		handleError(res, error);
 	}
 };
 
-// TODO: add an edit User endpoint
-// TODO: add functionality to delete and reupload the s3 image on edit
-
 exports.editUser = async (req, res) => {
 	try {
+		// Defining Mime Types
+		const MIME_TYPES = {
+			"image/jpg": "jpg",
+			"image/jpeg": "jpg",
+			"image/png": "png",
+		};
+
 		// Finding the user to edit
 		const user = await User.findById(req.user._id);
 
@@ -211,7 +215,7 @@ exports.editUser = async (req, res) => {
 
 		// Checking if the request has a file
 		if (req.file) {
-			// Setting upload parameters for s3
+			// Setting s3 upload parameters
 			const uploadParams = {
 				Bucket: "groupomaniapfp",
 				Key: `${Date.now().toString()}.${MIME_TYPES[req.file.mimetype]}`,
@@ -220,39 +224,45 @@ exports.editUser = async (req, res) => {
 				ContentDisposition: "inline",
 			};
 
-			// Uploading the file to s3
-			s3.upload(uploadParams, async (err, data) => {
-				if (err) {
-					// Handling s3 upload error
-					console.error("Error uploading file to S3: ", err);
-					res.status(500).json({
-						error: "Failed to upload profile picture to S3",
-						message: err,
-					});
-				} else {
-					// Handling s3 upload success
-					console.log("Successfully uploaded profile picture to S3: ", data);
+			try {
+				// Uploading the file to s3
+				const data = await s3.upload(uploadParams).promise();
+				console.log("Successfully uploaded profile picture to S3: ", data);
 
-					// Deleting the old profile picture from s3
+				// Checking if the user had a profile picture before and deleting it if so
+				if (user.profilePictureUrl) {
 					await s3
 						.deleteObject({
 							Bucket: "groupomaniapfp",
 							Key: user.profilePictureUrl.split("/")[3],
 						})
 						.promise();
-
-					// Adding the URL to the user Object
-					user.profilePictureUrl = data.Location;
 				}
-			});
+
+				// Setting the new profile picture url
+				user.profilePictureUrl = data.Location;
+			} catch (err) {
+				console.error("Error uploading file to S3: ", err);
+				return res.status(500).json({
+					error: "Failed to upload profile picture to S3",
+					message: err,
+				});
+			}
 		}
+
+		// Updating the user in the database
+		await User.updateOne({ _id: user._id }, user);
+
+		// Removing the password from the returned user object
+		user.password = undefined;
+
+		// Returning the updated user object
+		res.status(200).json({ user });
 	} catch (error) {
 		if (error.code === 11000) {
-			// Duplicate email error
 			res.status(400).json({ error: "Email is already taken." });
 		} else {
-			// Other errors
-			handleError(error);
+			handleError(res, error);
 		}
 	}
 };
@@ -269,7 +279,7 @@ exports.deleteUser = async (req, res) => {
 			await s3
 				.deleteObject({
 					Bucket: "groupomaniapfp",
-					Key: user.profilePictureUrl.split("/")[3],
+					Key: user?.profilePictureUrl?.split("/")[3],
 				})
 				.promise();
 		}
@@ -281,7 +291,7 @@ exports.deleteUser = async (req, res) => {
 		res.clearCookie("refresh");
 		res.clearCookie("jwt").json({ success: true });
 	} catch (error) {
-		handleError(error);
+		handleError(res, error);
 	}
 };
 
@@ -291,7 +301,7 @@ exports.getPosts = async (req, res) => {
 		const posts = await Post.find({ authorId: req.params.id });
 		res.json(posts);
 	} catch (error) {
-		handleError(error);
+		handleError(res, error);
 	}
 };
 
@@ -324,7 +334,7 @@ exports.refresh = async (req, res) => {
 		// Assigning the token to a cookie in the response
 		res.cookie("jwt", token, { httpOnly: true }).json({ success: true });
 	} catch (error) {
-		handleError(error);
+		handleError(res, error);
 	}
 };
 
@@ -345,7 +355,7 @@ exports.persist = async (req, res) => {
 
 		res.json({ user });
 	} catch (error) {
-		handleError(error);
+		handleError(res, error);
 	}
 };
 
@@ -455,7 +465,7 @@ exports.sendFriendRequest = async (req, res) => {
 			type: "sent",
 		});
 	} catch (error) {
-		handleError(error);
+		handleError(res, error);
 	}
 };
 
@@ -486,7 +496,7 @@ exports.denyFriendRequest = async (req, res) => {
 
 		res.status(200).json(req.body);
 	} catch (error) {
-		handleError(error);
+		handleError(res, error);
 	}
 };
 
@@ -531,7 +541,7 @@ exports.acceptFriendRequest = async (req, res) => {
 
 		res.status(200).json(req.body);
 	} catch (error) {
-		handleError(error);
+		handleError(res, error);
 	}
 };
 
@@ -577,6 +587,6 @@ exports.block = async (req, res) => {
 
 		res.status(200).json(req.body);
 	} catch (error) {
-		handleError(error);
+		handleError(res, error);
 	}
 };
