@@ -12,6 +12,17 @@ const Post = require("../models/post");
 
 // Routing Endpoints
 
+// TEMPORARY DELETE ALL ROUTE FOR DEVELOPMENT
+router.delete("/", async (req, res) => {
+	try {
+		await Post.deleteMany({});
+		res.status(200).json({ success: true });
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error." });
+	}
+});
+
 router.post(
 	"/",
 	passport.authenticate("jwt", { session: false }),
@@ -51,12 +62,6 @@ router.put(
 );
 
 router.get("/", postCtrl.getAllPosts);
-
-router.delete("/", async (req, res) => {
-	await Post.deleteMany({});
-
-	res.status(200).json({ success: true });
-});
 
 // Exporting Routes
 

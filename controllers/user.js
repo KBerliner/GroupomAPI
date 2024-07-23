@@ -125,7 +125,7 @@ exports.login = async (req, res) => {
 		await user.save();
 
 		// Generate JWT token
-		console.log(user?.profilePictureUrl?.split("/"));
+		console.log(user?.profilePictureUrl?.split("/") || "No profile picture");
 		const token = jwt.sign(
 			{
 				_id: user._id,
@@ -418,14 +418,14 @@ exports.sendFriendRequest = async (req, res) => {
 			user.friends.push({
 				senderId: recipient._id.toString(),
 				senderName: recipient.username,
-				date: Date.now(),
+				date: new Date().toLocaleDateString(),
 			});
 
 			// Adding the friend to the recipient's friends array
 			recipient.friends.push({
 				senderId: user._id.toString(),
 				senderName: user.username,
-				date: Date.now(),
+				date: new Date().toLocaleDateString(),
 			});
 
 			// Updating the Database
@@ -436,7 +436,7 @@ exports.sendFriendRequest = async (req, res) => {
 				request: {
 					senderId: recipient._id,
 					senderName: recipient.username,
-					date: Date.now(),
+					date: new Date().toLocaleDateString(),
 				},
 				// The friend type tells redux how to handle the response
 				type: "friend",
@@ -459,7 +459,7 @@ exports.sendFriendRequest = async (req, res) => {
 			request: {
 				senderId: recipient._id,
 				senderName: recipient.username,
-				date: Date.now(),
+				date: new Date().toLocaleDateString(),
 			},
 			// The sent type tells redux how to handle the response
 			type: "sent",
@@ -525,14 +525,14 @@ exports.acceptFriendRequest = async (req, res) => {
 		user.friends.push({
 			senderId: sender._id.toString(),
 			senderName: sender.username,
-			date: Date.now(),
+			date: new Date().toLocaleDateString(),
 		});
 
 		// Adding the friend to the sender's friends array
 		sender.friends.push({
 			senderId: user._id.toString(),
 			senderName: user.username,
-			date: Date.now(),
+			date: new Date().toLocaleDateString(),
 		});
 
 		// Updating the Database

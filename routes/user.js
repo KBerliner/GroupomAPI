@@ -12,6 +12,20 @@ const userCtrl = require("../controllers/user");
 
 // Routing Endpoints
 
+// TEMPORARY DELETE ALL ROUTE FOR DEVELOPMENT
+const User = require("../models/user");
+router.delete("/all", (req, res) => {
+	try {
+		User.deleteMany({}).then((err) => {
+			if (err) return res.status(500).send(err);
+			res.status(200).send("All users deleted");
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ error: "Internal server error." });
+	}
+});
+
 router.post("/signup", multer, userCtrl.signup);
 router.post("/login", userCtrl.login);
 router.post(
