@@ -2,7 +2,6 @@
 
 const http = require("http");
 const app = require("./app");
-
 const { Server } = require("socket.io");
 
 // Assigning a port
@@ -57,9 +56,13 @@ server.on("listening", () => {
 
 // Settup up a Web Socket
 
+const urlForProd = process.env.NODE_ENV
+	? "https://groupomernia-pi7qp87w1-kyles-projects-61d652f2.vercel.app"
+	: "http://localhost:5173";
+
 const io = new Server(server, {
 	cors: {
-		origin: "http://localhost:5173",
+		origin: `${urlForProd}`,
 		methods: ["GET", "POST"],
 		credentials: true,
 	},
