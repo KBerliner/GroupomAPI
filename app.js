@@ -30,7 +30,7 @@ db();
 
 // Setting up CORS
 
-if (import.meta.env.PROD) {
+if (process.env.NODE_ENV) {
 	app.use(
 		cors({
 			origin:
