@@ -77,6 +77,12 @@ io.on("connection", (socket) => {
 		console.log("User Added: ", userId);
 	});
 
+	// Handling a New Post
+
+	socket.on("post", () => {
+		io.emit("newPost");
+	});
+
 	// Handle a Friend Request
 	socket.on(
 		"friendRequest",
