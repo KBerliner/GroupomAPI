@@ -17,7 +17,6 @@ exports.createPost = async (req, res) => {
 
 	// Checking for file in request
 	if (req.file) {
-		console.log("Heres the body: ", req.body);
 		const uploadParams = {
 			Bucket: "groupomaniacontent",
 			Key: `${Date.now().toString()}.${MIME_TYPES[req.file.mimetype]}`,
@@ -114,7 +113,8 @@ exports.deletePost = async (req, res) => {
 
 exports.likePost = async (req, res) => {
 	try {
-		const user = req.user.user;
+		const user = req.user;
+
 		const post = await Post.findById(req.params.id);
 		if (!post) {
 			return res.status(404).json({ error: "Post not found." });
@@ -149,7 +149,7 @@ exports.likePost = async (req, res) => {
 
 exports.dislikePost = async (req, res) => {
 	try {
-		const user = req.user.user;
+		const user = req.user;
 		const post = await Post.findById(req.params.id);
 		if (!post) {
 			return res.status(404).json({ error: "Post not found." });
@@ -165,7 +165,6 @@ exports.dislikePost = async (req, res) => {
 		} else if (post.usersLiked.includes(user._id)) {
 			post.likes -= 1;
 			post.usersLiked.splice(post.usersLiked.indexOf(user._id), 1);
-			console.log("USERS DISLIKED: ", post.usersLiked.includes(user._id));
 			post.dislikes += 1;
 			post.usersDisliked.push(user._id);
 		} else {
