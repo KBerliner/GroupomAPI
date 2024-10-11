@@ -161,9 +161,17 @@ exports.login = async (req, res) => {
 		deleteExpiredRevokedTokens();
 
 		// Adding JWT to a Cookie
-		res.cookie("jwt", token, { httpOnly: true, same_site: "none" });
+		res.cookie("jwt", token, {
+			secure: "true",
+			same_site: "none",
+			httpOnly: true,
+		});
 		res
-			.cookie("refresh", refresh, { httpOnly: true })
+			.cookie("refresh", refresh, {
+				same_site: "none",
+				secure: "true",
+				httpOnly: true,
+			})
 			.json({ success: true, user });
 	} catch (error) {
 		return handleError(res, error);
