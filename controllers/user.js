@@ -163,12 +163,12 @@ exports.login = async (req, res) => {
 		// Adding JWT to a Cookie
 		res.cookie("jwt", token, {
 			secure: "true",
-			same_site: "none",
+			sameSite: "none",
 			httpOnly: true,
 		});
 		res
 			.cookie("refresh", refresh, {
-				same_site: "none",
+				sameSite: "none",
 				secure: "true",
 				httpOnly: true,
 			})
