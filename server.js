@@ -56,9 +56,10 @@ server.on("listening", () => {
 
 // Settup up a Web Socket
 
-const urlForProd = process.env.NODE_ENV
-	? "https://groupomernia-pi7qp87w1-kyles-projects-61d652f2.vercel.app"
-	: "http://localhost:5173";
+const urlForProd =
+	process.env.NODE_ENV == "production"
+		? "https://groupomernia.vercel.app/"
+		: "http://localhost:5173";
 
 const io = new Server(server, {
 	cors: {
