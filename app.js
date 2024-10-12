@@ -33,7 +33,7 @@ db();
 if (process.env.NODE_ENV) {
 	app.use(
 		cors({
-			origin: "https://groupomernia.vercel.app/",
+			origin: "https://groupomernia.vercel.app",
 			credentials: true,
 		})
 	);

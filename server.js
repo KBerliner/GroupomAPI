@@ -58,7 +58,7 @@ server.on("listening", () => {
 
 const urlForProd =
 	process.env.NODE_ENV == "production"
-		? "https://groupomernia.vercel.app/"
+		? "https://groupomernia.vercel.app"
 		: "http://localhost:5173";
 
 const io = new Server(server, {
