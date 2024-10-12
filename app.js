@@ -33,8 +33,7 @@ db();
 if (process.env.NODE_ENV) {
 	app.use(
 		cors({
-			origin:
-				"https://groupomernia-pi7qp87w1-kyles-projects-61d652f2.vercel.app",
+			origin: "https://groupomernia.vercel.app/",
 			credentials: true,
 		})
 	);
