@@ -184,8 +184,20 @@ exports.logout = async (req, res) => {
 		addRevokedToken(req);
 
 		// Clearing cookies
-		res.clearCookie("refresh");
-		res.clearCookie("jwt").json({ success: true });
+		res.cookie("refresh", "", {
+			secure: "true",
+			sameSite: "none",
+			httpOnly: true,
+			expires: new Date(0), // Expires immediately
+		});
+		res
+			.cookie("jwt", "", {
+				secure: "true",
+				sameSite: "none",
+				httpOnly: true,
+				expires: new Date(0), // Expires immediately
+			})
+			.json({ success: true });
 	} catch (error) {
 		handleError(res, error);
 	}
