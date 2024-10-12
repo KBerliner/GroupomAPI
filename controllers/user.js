@@ -149,7 +149,7 @@ exports.login = async (req, res) => {
 			{ _id: user._id },
 			process.env.REFRESH_JWT_SECRET,
 			{
-				expiresIn: "7d",
+				expiresIn: "30d",
 			}
 		);
 
@@ -361,7 +361,33 @@ exports.persist = async (req, res) => {
 		// Removing the password from the response
 		user.password = undefined;
 
-		res.json({ user });
+		// Creating and setting a new access token
+		const token = jwt.sign(
+			{
+				_id: user._id,
+				username: user.username,
+				email: user.email,
+				role: user.role,
+				sentRequests: user.sentRequests,
+				receivedRequests: user.receivedRequests,
+				friends: user.friends,
+				blocked: user.blocked,
+				profilePictureUrl: user.profilePictureUrl || "",
+			},
+			process.env.JWT_SECRET,
+			{
+				expiresIn: "15m",
+			}
+		);
+
+		// Adding JWT to a Cookie and sending response
+		res
+			.cookie("jwt", token, {
+				secure: "true",
+				sameSite: "none",
+				httpOnly: true,
+			})
+			.json({ user });
 	} catch (error) {
 		handleError(res, error);
 	}

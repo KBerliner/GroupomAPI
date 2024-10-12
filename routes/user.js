@@ -61,7 +61,7 @@ router.get("/posts/:id", userCtrl.getPosts);
 
 router.get(
 	"/persist",
-	passport.authenticate("jwt", { session: false }),
+	passport.authenticate("refresh", { session: false }),
 	userCtrl.persist
 );
 
