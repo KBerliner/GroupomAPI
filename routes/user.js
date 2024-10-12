@@ -89,6 +89,13 @@ router.put(
 	userCtrl.block
 );
 
+router.options("/*", (req, res) => {
+	res.header("Access-Control-Allow-Origin", "https://groupomernia.vercel.app");
+	res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
+	res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+	res.sendStatus(200);
+});
+
 // Exporting Routes
 
 module.exports = router;
