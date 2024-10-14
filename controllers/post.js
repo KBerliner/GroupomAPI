@@ -144,7 +144,7 @@ exports.editPost = async (req, res) => {
 
 exports.deletePost = async (req, res) => {
 	try {
-		const user = req.user.user;
+		const user = req.user;
 		const post = await Post.findById(req.params.id);
 		if (!post) {
 			return res.status(404).json({ error: "Post not found." });
