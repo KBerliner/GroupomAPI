@@ -71,25 +71,74 @@ exports.createPost = async (req, res) => {
 };
 
 exports.editPost = async (req, res) => {
+	const user = req.user;
+	// Finding the post to update
+	const post = await Post.findById(req.params.id);
+
+	// Returning an error if the post doesn't exist
+	if (!post) {
+		res.status(404).json({ error: "Post not found!" });
+	}
+
+	// Return an error if the user doesn't own the post
+	if (post.authorId !== user._id) {
+		return res.status(401).json({ error: "Unauthorized." });
+	}
+
+	// Updating the post object
+	post.title = req.body.title;
+	post.caption = req.body.caption;
+	post.likesEnabled = req.body.likesEnabled;
+	post.lastUpdated = Date.now();
+
+	if (req.file) {
+		// Defining Mime Types
+		const MIME_TYPES = {
+			"image/jpg": "jpg",
+			"image/jpeg": "jpg",
+			"image/png": "png",
+		};
+
+		// Assigning upload parameters for AWS S3 Bucket
+		const uploadParams = {
+			Bucket: "groupomaniacontent",
+			Key: `${Date.now().toString()}.${MIME_TYPES[req.file.mimetype]}`,
+			Body: req.file.buffer,
+			ContentType: `image/${MIME_TYPES[req.file.mimetype]}`,
+			ContentDisposition: "inline",
+		};
+
+		try {
+			// Uploading the file to the AWS S3 Bucket
+			const data = await s3.upload(uploadParams).promise();
+			console.log("Successfully uploaded image to S3: ", data);
+
+			// Checking if the post already had an image
+			if (post.imageUrl) {
+				await s3
+					.deleteObject({
+						Bucket: "groupomaniacontent",
+						Key: post.imageUrl.split("/")[3],
+					})
+					.promise();
+			}
+
+			// Setting the new image
+			post.imageUrl = data.Location;
+		} catch (e) {
+			res.status(500).json({
+				message: "Error submitting the new image to the AWS S3 Bucket",
+				error: e,
+			});
+		}
+	}
+
+	// Updating the object in the database
 	try {
-		const user = req.user;
-		const post = await Post.findById(req.params.id);
-		if (!post) {
-			return res.status(404).json({ error: "Post not found." });
-		}
-		if (post.authorId !== user._id) {
-			return res.status(401).json({ error: "Unauthorized." });
-		}
-		post.title = req.body.title;
-		post.caption = req.body.caption;
-		post.imageUrl = req.body?.imageUrl;
-		post.likesEnabled = req.body.likesEnabled;
-		post.lastUpdated = Date.now();
 		await post.save();
 		res.status(200).json(post);
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error." });
+	} catch (e) {
+		res.status(500).json({ error: e });
 	}
 };
 
