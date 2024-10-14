@@ -63,6 +63,8 @@ router.put(
 
 router.get("/", postCtrl.getAllPosts);
 
+router.get("/:id", postCtrl.getOnePost);
+
 router.options("/*", (req, res) => {
 	res.header("Access-Control-Allow-Origin", "https://groupomernia.vercel.app");
 	res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");

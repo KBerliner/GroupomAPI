@@ -72,7 +72,7 @@ exports.createPost = async (req, res) => {
 
 exports.editPost = async (req, res) => {
 	try {
-		const user = req.user.user;
+		const user = req.user;
 		const post = await Post.findById(req.params.id);
 		if (!post) {
 			return res.status(404).json({ error: "Post not found." });
@@ -86,7 +86,7 @@ exports.editPost = async (req, res) => {
 		post.likesEnabled = req.body.likesEnabled;
 		post.lastUpdated = Date.now();
 		await post.save();
-		res.status(200).json({ success: true });
+		res.status(200).json(post);
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ error: "Internal server error." });
@@ -211,5 +211,18 @@ exports.getAllPosts = async (req, res) => {
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ error });
+	}
+};
+
+exports.getOnePost = async (req, res) => {
+	try {
+		const post = await Post.findById(req.params.id);
+		if (!post) {
+			return res.status(404).json({ error: "Post not found." });
+		}
+		res.status(200).json(post);
+	} catch (e) {
+		console.error(e);
+		res.status(500).json({ error: e.message });
 	}
 };

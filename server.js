@@ -78,7 +78,6 @@ io.on("connection", (socket) => {
 		userSockets[userId] = socket.id;
 		onlineUsers.add(userId);
 		io.emit("onlineUsers", Array.from(onlineUsers));
-		console.log("User Added: ", userId);
 	});
 
 	// Handling a New Post
