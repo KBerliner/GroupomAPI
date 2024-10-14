@@ -24,6 +24,58 @@ const handleError = (res, error) => {
 exports.signup = async (req, res) => {
 	// Setting Variables
 	const body = req.body;
+
+	// User Save with Tokens and Cookies
+	const saveUser = async (user) => {
+		// Generate JWT token
+		const token = jwt.sign(
+			{
+				_id: user._id,
+				username: user.username,
+				email: user.email,
+				role: user.role,
+				sentRequests: user.sentRequests,
+				receivedRequests: user.receivedRequests,
+				friends: user.friends,
+				blocked: user.blocked,
+				profilePictureUrl: user.profilePictureUrl || "",
+			},
+			process.env.JWT_SECRET,
+			{
+				expiresIn: "15m",
+			}
+		);
+
+		// Generate Refresh token
+		const refresh = jwt.sign(
+			{ _id: user._id },
+			process.env.REFRESH_JWT_SECRET,
+			{
+				expiresIn: "30d",
+			}
+		);
+
+		// Saving the user to the Database
+		await user.save();
+
+		// Removing password from user object after saving to database
+		user.password = undefined;
+
+		// Adding JWT to a Cookie and Sending Response
+		res.cookie("jwt", token, {
+			secure: "true",
+			sameSite: "none",
+			httpOnly: true,
+		});
+		res
+			.cookie("refresh", refresh, {
+				sameSite: "none",
+				secure: "true",
+				httpOnly: true,
+			})
+			.json({ success: true, user });
+	};
+
 	const { username, email, password } = body;
 	const MIME_TYPES = {
 		"image/jpg": "jpg",
@@ -63,10 +115,7 @@ exports.signup = async (req, res) => {
 				user = new User({ ...body, profilePictureUrl: data.Location });
 				try {
 					// Save the user to the database
-					await user.save();
-					// Remove the password from the response
-					user.password = undefined;
-					res.status(201).json({ message: "User created successfully!", user });
+					saveUser(user);
 				} catch (error) {
 					if (error.code === 11000) {
 						// Duplicate email error
@@ -82,10 +131,7 @@ exports.signup = async (req, res) => {
 		user = new User(body);
 		try {
 			// Save the user to the database
-			await user.save();
-			// Remove the password from the response
-			user.password = undefined;
-			res.status(201).json({ message: "User created successfully!", user });
+			saveUser(user);
 		} catch (error) {
 			if (error.code === 11000) {
 				// Duplicate email error
@@ -155,7 +201,6 @@ exports.login = async (req, res) => {
 
 		// Remove password from the response
 		user.password = undefined;
-		console.log(user);
 
 		// Delete all expired refresh tokens from the Database
 		deleteExpiredRevokedTokens();
